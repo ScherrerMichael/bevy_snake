@@ -14,6 +14,8 @@ pub enum SnakeMovement {
     Growth,
 }
 
+struct EatEvent;
+
 #[derive(Default, Copy, Clone, Eq, PartialEq, Hash)]
 struct Position {
     x: i32,
@@ -213,14 +215,24 @@ fn snake_eating(
     mut growth_writer: EventWriter<GrowthEvent>,
     food_positions: Query<(Entity, &Position), With<Food>>,
     head_positions: Query<&Position, With<SnakeHead>>,
+    mut ev_eat: EventWriter<EatEvent>
 ) {
     for head_pos in head_positions.iter() {
         for (ent, food_pos) in food_positions.iter() {
             if food_pos == head_pos {
                 commands.entity(ent).despawn();
+                ev_eat.send(EatEvent);
                 growth_writer.send(GrowthEvent);
             }
         }
+    }
+}
+
+fn debug_eat_event(
+    mut ev_eat: EventReader<EatEvent>,
+) {
+    for _ev in ev_eat.iter() {
+        eprint!("Snake has eaten!");
     }
 }
 
@@ -292,6 +304,8 @@ fn main() {
         .insert_resource(LastTailPosition::default())
         .add_event::<GrowthEvent>()
         .add_event::<GameOverEvent>()
+        .add_event::<EatEvent>()
+        .add_system(debug_eat_event.system())
         .add_startup_system(setup.system())
         .add_startup_stage("game_setup", SystemStage::single(spawn_snake.system()))
         .add_system(
